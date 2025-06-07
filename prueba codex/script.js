@@ -6,6 +6,14 @@ var container;
 var camera, scene, renderer;
 var controls;
 
+// elements for the text forming animation
+var textCanvas, textCtx, textPixels = [];
+var textParticles = [];
+var textGroup;
+var input;
+var showText = false;
+var colors = ['#F7A541', '#F45D4C', '#FA2E59', '#4783c3', '#9c6cb7'];
+
 var shaderUniforms, shaderAttributes, confettiMaterial;
 
 var time = 0;
@@ -19,6 +27,8 @@ function init() {
     createGrid();
     createConfettiMaterial();
     createConfettiPartycles();
+    initTextCanvas();
+    initInput();
 
     window.addEventListener('resize', onWindowResize, false);
 }
@@ -255,6 +265,92 @@ function createGrid() {
     scene.add(grid);
 }
 
+function initTextCanvas() {
+    textCanvas = document.getElementById('text');
+    textCanvas.width = window.innerWidth;
+    textCanvas.height = 200;
+    textCtx = textCanvas.getContext('2d');
+    updateText();
+}
+
+function initInput() {
+    input = document.getElementById('input');
+    input.addEventListener('keyup', updateText);
+}
+
+function updateText() {
+    if (!textCtx) return;
+    var msg = input.value || '';
+    var fontSize = window.innerWidth / (msg.length * 1.3);
+    if (fontSize > 120) fontSize = 120;
+    textCtx.font = '700 ' + fontSize + 'px Arial';
+    textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+    textCtx.textAlign = 'center';
+    textCtx.textBaseline = 'middle';
+    textCtx.fillText(msg.toUpperCase(), textCanvas.width / 2, 50);
+
+    var pix = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height).data;
+    textPixels = [];
+    for (var i = pix.length; i >= 0; i -= 4) {
+        if (pix[i] !== 0) {
+            var x = (i / 4) % textCanvas.width;
+            var y = Math.floor(Math.floor(i / textCanvas.width) / 4);
+            if ((x && x % 6 === 0) && (y && y % 6 === 0)) {
+                textPixels.push({
+                    x: x,
+                    y: textCanvas.height - y - 120
+                });
+            }
+        }
+    }
+}
+
+function randomPos(v) {
+    var radius = window.innerWidth * 3;
+    var r = window.innerWidth + radius * Math.random();
+    var angle = Math.random() * Math.PI * 2;
+    v.x = r * Math.cos(angle);
+    v.y = r * Math.sin(angle);
+}
+
+function Particle(i) {
+    this.vx = Math.random() * 0.05;
+    this.vy = Math.random() * 0.05;
+    var geo = new THREE.BoxGeometry(20, 20, 20);
+    var mat = new THREE.MeshLambertMaterial({color: colors[i % colors.length], shading: THREE.FlatShading});
+    this.mesh = new THREE.Mesh(geo, mat);
+    this.target = new THREE.Vector3();
+}
+
+Particle.prototype.init = function(i) {
+    this.target.set((textPixels[i].x - (window.innerWidth / 2)) * 4, textPixels[i].y * 5, -10 * Math.random() + 20);
+    randomPos(this.mesh.position);
+};
+
+Particle.prototype.update = function() {
+    this.mesh.rotation.x += this.vx;
+    this.mesh.rotation.y += this.vy;
+    this.mesh.position.lerp(this.target, 0.02);
+};
+
+function createTextParticles() {
+    textGroup = new THREE.Object3D();
+    textParticles = [];
+    for (var i = 0; i < textPixels.length; i++) {
+        var p = new Particle(i);
+        p.init(i);
+        textGroup.add(p.mesh);
+        textParticles.push(p);
+    }
+    scene.add(textGroup);
+}
+
+function updateTextParticles() {
+    for (var i = 0; i < textParticles.length; i++) {
+        textParticles[i].update();
+    }
+}
+
 function tick() {
     requestAnimationFrame(tick);
 
@@ -271,6 +367,22 @@ function update() {
     time += timeStep;
     time %= 14; // make it loop
 
+    if (!showText && time > 7) {
+        showText = true;
+        updateText();
+        createTextParticles();
+    }
+
+    if (showText) {
+        updateTextParticles();
+        // reset when loop starts again
+        if (time < 2) {
+            scene.remove(textGroup);
+            textParticles = [];
+            showText = false;
+        }
+    }
+
     controls.update();
 }
 
@@ -283,6 +395,12 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
+
+    if (textCanvas) {
+        textCanvas.width = window.innerWidth;
+        textCanvas.height = 200;
+        updateText();
+    }
 }
 
 function randomRange(min, max) {

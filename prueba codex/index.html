@@ -1,14 +1,6 @@
-<!DOCTYPE html>
-<html lang="en" >
-<head>
-  <meta charset="UTF-8">
-  <title>A stupendous amount of confetti</title>
-  <link rel="stylesheet" href="./style.css">
-
-</head>
-<body>
-<!-- partial:index.partial.html -->
 <div id="container"></div>
+<canvas id="text" width="700" height="200"></canvas>
+<input id="input" type="text" value="CONFETTI"/>
 
 <script type="x-shader/x-vertex" id="vertexShader">
     // delay and duration are used to calculate animation progress (0-1) for each vertex
@@ -19,7 +11,7 @@
     attribute vec3 aControlPoint0;
     // second control point for cubic bezier path
     attribute vec3 aControlPoint1;
-    // arbitrary normalized axis (x, y, z) and rotation (w) for quaternian rotation
+    // arbitrary normalized axis (x, y, z) and rotation (w) for quaternion rotation
     attribute vec4 aAxisAngle;
     // front vertex color
     attribute vec3 aFrontColor;
@@ -112,9 +104,3 @@
 
     }
 </script>
-<!-- partial -->
-  <script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js'></script>
-<script src='https://s3-us-west-2.amazonaws.com/s.cdpn.io/175711/OrbitControls.js'></script><script  src="./script.js"></script>
-
-</body>
-</html>
