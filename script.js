@@ -13,6 +13,10 @@ var paso = 1/60,
 iniciar();
 animar();
 
+var animacionEjecutada = false;
+
+
+
 function iniciar(){
   crearEscena();
   crearLuces();
@@ -27,7 +31,8 @@ function crearEscena(){
   escena = new THREE.Scene();
   var cont = document.getElementById('escena');
   camara = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight,0.1,2000);
-  camara.position.set(3,1,-3);
+  camara.position.set(0,1.5,6);
+  camara.lookAt(new THREE.Vector3(0,1.5,0));
   renderizador = new THREE.WebGLRenderer({alpha:false,premultipliedAlpha:false});
   renderizador.setSize(window.innerWidth,window.innerHeight);
   renderizador.setClearColor(0xf5f5f5,1);
@@ -133,9 +138,9 @@ function manejarEntrada(){
 // ✅ FUNCIÓN CORREGIDA
 function actualizarTexto(){
   if(!ctxTexto)return;
-  var msg=document.getElementById('entrada').value||'DESEAMOS QUE HAYAS DISFRUTADO DE ESTA EXPERIENCIA';
-  var s=window.innerWidth/(msg.length*1.3);
-  if(s>120)s=120;
+  var msg=document.getElementById('entrada').value||'DESEAMOS QUE HAYAS DISFRUTADO ESTA EXPERIENCIA';
+  var s=window.innerWidth/(msg.length*0.8);
+  if(s>160)s=160;
   
   ctxTexto.font='700 '+s+'px Arial';
   ctxTexto.clearRect(0,0,lienzoTexto.width,lienzoTexto.height);
@@ -155,7 +160,7 @@ function actualizarTexto(){
       let y=Math.floor((i/4)/lienzoTexto.width);
       
       // Reducir densidad para mejor rendimiento
-      if(x%4===0 && y%4===0){
+      if(x%2===0 && y%2===0){
         pixeles.push({
           x: x,
           y: y
@@ -172,9 +177,9 @@ function Cubo(idx){
   this.rotX=Math.random()*0.05;
   this.rotY=Math.random()*0.05;
   this.obj=new THREE.Mesh(
-    new THREE.BoxGeometry(0.03,0.005,0.07), // Cubos más grandes
+    new THREE.BoxGeometry(0.03,0.05,0.07), // Cubos más grandes
     new THREE.MeshLambertMaterial({
-      color:new THREE.Color().setHSL(Math.random(),0.8,0.6)
+      color:new THREE.Color().setHSL(Math.random(),0.8,0.7)
     })
   );
   this.destino=new THREE.Vector3();
@@ -186,14 +191,22 @@ Cubo.prototype.ini=function(i){
   let x = (pixel.x - lienzoTexto.width/2) * (8 / lienzoTexto.width);
   let y = (lienzoTexto.height/2 - pixel.y) * (4 / lienzoTexto.height);
 	
-  this.destino.set(x, y, 0);
+  this.destino.set(x, y + 1.5, 0);
   this.obj.position.copy(posAleatoria(new THREE.Vector3()));
 };
 
 Cubo.prototype.act=function(){
-  this.obj.rotation.x+=this.rotX;
-  this.obj.rotation.y+=this.rotY;
-  this.obj.position.lerp(this.destino,0.03); // Movimiento más rápido
+  if(this.obj.position.distanceTo(this.destino) > 0.05){
+    this.obj.rotation.x+=this.rotX;
+    this.obj.rotation.y+=this.rotY;
+    this.obj.position.lerp(this.destino,0.03);
+		
+  }else{
+    this.obj.position.copy(this.destino);
+    this.obj.rotation.set(0,0,0);
+    this.obj.material.color.set(0xff3333);
+		
+  }
 };
 
 function posAleatoria(v){
@@ -231,17 +244,32 @@ function actualizarCubos(){
 
 // ✅ FUNCIÓN ANIMAR CORREGIDA
 function animar(){
+  if(animacionEjecutada) return;
+  
   requestAnimationFrame(animar);
-  tiempo+=paso;
-  
-  // Ciclo de 14 segundos
-  if(tiempo >= 14) tiempo = 0;
-  
-  confeti.material.uniforms.tiempo.value=tiempo;
-  
-  // Mostrar texto entre los segundos 6 y 14
-  if(!mostrar && tiempo > 6 && tiempo < 14){
-    mostrar=true;
+  tiempo += paso;
+
+  if(tiempo >= 14){
+    animacionEjecutada = true;
+    
+    // Limpiar toda la escena
+    if(grupoTexto){
+      escena.remove(grupoTexto);
+      grupoTexto = null;
+    }
+    // ✅ MANTENER el texto sólido visible al final
+    // No remover textoSolido aquí
+    //cubos = [];
+    //mostrar = false;
+    //letrasSolidasMostradas = false;
+    //return;
+  }
+
+  confeti.material.uniforms.tiempo.value = tiempo;
+
+  // Mostrar letras de confeti entre segundo 8 y 15
+  if(!mostrar && tiempo > 7 && tiempo < 15){
+    mostrar = true;
     actualizarTexto();
     crearCubos();
   }
@@ -249,11 +277,12 @@ function animar(){
   if(mostrar){
     actualizarCubos();
     // Ocultar texto después del segundo 10
-    if(tiempo >= 14 || tiempo < 1){
+    if(tiempo >= 15){
       if(grupoTexto){
         escena.remove(grupoTexto);
         grupoTexto = null;
       }
+			material = 0;
       cubos=[];
       mostrar=false;
     }
